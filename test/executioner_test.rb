@@ -154,6 +154,11 @@ describe "Executioner, class methods" do
     @object.with_env 'arg1'
   end
   
+  it "should merge options onto the default options" do
+    @object.expects(:execute).with { |command, options| options[:env] == { :foo => 'foo' } }
+    @object.with_env 'arg1', :env => { :foo => 'foo' }
+  end
+  
   it "should be possible to find an executable" do
     File.stubs(:exist?).with('/bin/sh').returns(true)
     Executioner::ClassMethods.find_executable('sh').should == '/bin/sh'

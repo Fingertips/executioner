@@ -56,8 +56,8 @@ module Executioner
   
   module ClassMethods
     def executable(executable, options={})
-      options[:switch_stdout_and_stderr] = false if options[:switch_stdout_and_stderr].nil?
-      options[:use_queue]                = false if options[:use_queue].nil?
+      options[:switch_stdout_and_stderr] ||= false
+      options[:use_queue]                ||= false
       
       executable = executable.to_s if executable.is_a? Symbol
       use_queue = options.delete(:use_queue)
@@ -76,13 +76,13 @@ module Executioner
         if use_queue
           body = "queue(\"#{executable_path} \#{args}\")"
         else
-          body = "execute(\"#{executable_path} \#{args}\", #{options.inspect})"
+          body = "execute(\"#{executable_path} \#{args}\", #{options.inspect}.merge(options))"
         end
       else
         body = "raise Executioner::ExecutableNotFoundError, \"Unable to find the executable '#{executable}' in: #{Executioner::SEARCH_PATHS.join(', ')}\""
       end
       
-      class_eval "def #{executable.gsub(/-/, '_')}(args); #{body}; end", __FILE__, __LINE__
+      class_eval "def #{executable.gsub(/-/, '_')}(args, options = {}); #{body}; end", __FILE__, __LINE__
     end
     
     def find_executable(executable, advance_from = nil)
