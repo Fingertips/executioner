@@ -16,7 +16,7 @@ module Executioner
   end
   
   def execute(command, options={})
-    options[:switch_stdout_and_stderr] = false if options[:switch_stdout_and_stderr].nil?
+    command = "#{options[:env].map { |k,v| "#{k}='#{v}'" }.join(' ')} #{command}" if options[:env]
     
     Executioner.logger.debug("Executing: `#{command}'") if Executioner.logger
     

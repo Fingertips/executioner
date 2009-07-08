@@ -6,17 +6,63 @@ class AClassThatUsesSubshells
   executable :doesnotexistforsure
   executable 'executable-with-dash'
   executable :with_path, :path => '/path/to/executable'
+  executable :with_env,  :path => '/path/to/executable', :env => { :foo => 'bar' }
+  
+  public :execute
 end
 
-describe "Executioner, the module" do
-  it "should assign an optional logger" do
+describe "Executioner, when executing" do
+  before do
+    @object = AClassThatUsesSubshells.new
+  end
+  
+  it "should open a pipe with the given command" do
+    Open3.expects(:popen3).with('/the/command')
+    @object.execute('/the/command')
+  end
+  
+  it "should return the output received from stdout" do
+    stub_popen3 'stdout output', ''
+    @object.execute('/the/command').should == 'stdout output'
+  end
+  
+  it "should return the output received from stderr if they should be reversed" do
+    stub_popen3 '', 'stderr output'
+    @object.execute('/the/command', :switch_stdout_and_stderr => true).should == 'stderr output'
+  end
+  
+  it "should raise a Executioner::ProcessError if stdout is empty and stderr is not" do
+    stub_popen3 '', 'stderr output'
+    lambda { @object.execute('foo') }.should.raise Executioner::ProcessError
+  end
+  
+  it "should raise a Executioner::ProcessError if stderr is empty and stdout is not and the streams are reversed" do
+    stub_popen3 'stdout output', ''
+    lambda { @object.execute('foo', :switch_stdout_and_stderr => true) }.should.raise Executioner::ProcessError
+  end
+  
+  it "should prepend the given env variables" do
+    Open3.expects(:popen3).with("foo='bar' /the/command")
+    @object.execute('/the/command', :env => { :foo => :bar })
+  end
+  
+  it "should log the command that's going to be executed if a logger is available" do
     begin
-      logger = Object.new
+      logger = mock('Logger')
       Executioner.logger = logger
-      Executioner.logger.should.be logger
+      
+      logger.expects(:debug).with("Executing: `foo'")
+      stub_popen3
+      @object.execute('foo')
     ensure
       Executioner.logger = nil
     end
+  end
+  
+  private
+  
+  def stub_popen3(stdout = '', stderr = '')
+    Open3.stubs(:popen3).yields(*['stdin', stdout, stderr].map { |s| StringIO.new(s) })
   end
 end
 
@@ -76,7 +122,7 @@ describe "Executioner, class methods" do
   end
   
   it "should define an instance method which calls #execute with the correct path to the executable" do
-    @object.expects(:execute).with('/bin/sh with some args', {:switch_stdout_and_stderr => false})
+    @object.expects(:execute).with('/bin/sh with some args', { :switch_stdout_and_stderr => false })
     @object.sh 'with some args'
   end
   
@@ -85,13 +131,13 @@ describe "Executioner, class methods" do
   end
   
   it "should be possible to switch stdin and stderr" do
-    AClassThatUsesSubshells.class_eval { executable(:sh, {:switch_stdout_and_stderr => true}) }
-    @object.expects(:execute).with('/bin/sh with some args', {:switch_stdout_and_stderr => true})
+    AClassThatUsesSubshells.class_eval { executable(:sh, { :switch_stdout_and_stderr => true }) }
+    @object.expects(:execute).with('/bin/sh with some args', { :switch_stdout_and_stderr => true })
     @object.sh 'with some args'
   end
   
   it "should be possible to use the queue by default" do
-    AClassThatUsesSubshells.class_eval { executable(:sh, {:use_queue => true}) }
+    AClassThatUsesSubshells.class_eval { executable(:sh, { :use_queue => true }) }
     @object.expects(:execute).with('/bin/sh arg1 && /bin/sh arg2', {})
     @object.sh 'arg1'
     @object.sh 'arg2'
@@ -101,6 +147,11 @@ describe "Executioner, class methods" do
   it "should be possible to specify the path to the executable" do
     @object.expects(:execute).with { |command, options| command == "/path/to/executable arg1" }
     @object.with_path 'arg1'
+  end
+  
+  it "should be possible to specify the env that's to be prepended to the command" do
+    @object.expects(:execute).with { |command, options| options[:env] == { :foo => 'bar' } }
+    @object.with_env 'arg1'
   end
   
   it "should be possible to find an executable" do
