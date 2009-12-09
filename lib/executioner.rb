@@ -5,7 +5,7 @@ module Executioner
   class ProcessError < ExecutionerError; end
   class ExecutableNotFoundError < ExecutionerError; end
   
-  SEARCH_PATHS = %w{ /bin /usr/bin /usr/local/bin /opt/homebrew/bin /opt/local/bin }
+  SEARCH_PATHS = %W{ #{File.expand_path('~/bin')} /bin /usr/bin /usr/local/bin /opt/homebrew/bin /opt/local/bin }
   
   class << self
     attr_accessor :logger

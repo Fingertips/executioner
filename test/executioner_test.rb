@@ -160,6 +160,7 @@ describe "Executioner, class methods" do
   end
   
   it "should be possible to find an executable" do
+    File.stubs(:exist?).with(File.expand_path('~/bin/sh')).returns(false)
     File.stubs(:exist?).with('/bin/sh').returns(true)
     Executioner::ClassMethods.find_executable('sh').should == '/bin/sh'
   end
@@ -170,9 +171,11 @@ describe "Executioner, class methods" do
   end
   
   it "should yield all found executables, but use the one for which the proc returns a truthful value" do
+    File.stubs(:exist?).with(File.expand_path('~/bin/with_selection_proc')).returns(true)
     File.stubs(:exist?).with('/bin/with_selection_proc').returns(true)
     File.stubs(:exist?).with('/usr/bin/with_selection_proc').returns(true)
     File.stubs(:exist?).with('/usr/local/bin/with_selection_proc').returns(true)
+    File.stubs(:exist?).with('/opt/homebrew/bin/with_selection_proc').returns(true)
     File.stubs(:exist?).with('/opt/local/bin/with_selection_proc').returns(true)
     
     AClassThatUsesSubshells.executable(:with_selection_proc, :select_if => lambda { |executable| nil })
