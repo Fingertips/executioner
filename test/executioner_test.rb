@@ -195,4 +195,11 @@ describe "Executioner, class methods" do
       @object.doesnotexistforsure 'right?'
     }.should.raise Executioner::ExecutableNotFoundError
   end
+  
+  it "should work when there is no home directory in the environment" do
+    ruby = File.join(Config::CONFIG['bindir'], Config::CONFIG['ruby_install_name'])
+    lambda {
+      @object.execute("#{ruby} #{File.expand_path('../scripts/load_executioner_without_home.rb', __FILE__)}")
+    }.should.not.raise
+  end
 end

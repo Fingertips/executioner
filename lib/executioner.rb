@@ -5,7 +5,11 @@ module Executioner
   class ProcessError < ExecutionerError; end
   class ExecutableNotFoundError < ExecutionerError; end
   
-  SEARCH_PATHS = %W{ #{File.expand_path('~/bin')} /bin /usr/bin /usr/local/bin /opt/homebrew/bin /opt/local/bin }
+  SEARCH_PATHS = %w(/bin /usr/bin /usr/local/bin /opt/homebrew/bin /opt/local/bin)
+  begin
+    SEARCH_PATHS.unshift(File.expand_path('~/bin'))
+  rescue ArgumentError
+  end
   
   class << self
     # Assign a logger if you want to log commands and options.
