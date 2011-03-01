@@ -8,6 +8,7 @@ module Executioner
   SEARCH_PATHS = %W{ #{File.expand_path('~/bin')} /bin /usr/bin /usr/local/bin /opt/homebrew/bin /opt/local/bin }
   
   class << self
+    # Assign a logger if you want to log commands and options.
     attr_accessor :logger
     
     def included(klass)
@@ -55,6 +56,36 @@ module Executioner
   end
   
   module ClassMethods
+    # Register an executable with the class.
+    #
+    #   executable :ppane
+    #
+    # You can configure the environment to use for each call to the executable.
+    #
+    #   executable :rails, :env => { 'RAILS_ENV' => 'production' }
+    #
+    # In case the executable is outside regular paths, you can specify a
+    # particular path.
+    #
+    #   executable :heap, :path => '/Developer/usr/bin/heap'
+    #
+    # The method you use to call the binary returns it's output in a a string
+    # sometimes the useful information is in +stderr+ instead of +stdout+.
+    # This happens sometimes in application which show progress. You can
+    # switch the output streams to capture +stderr+ instead of +stdout+.
+    #
+    #   executable :lame, :switch_stdout_and_stderr => true
+    #
+    # If you have some particular need to select a specific path over another
+    # you can select it using a proc.
+    #
+    #   executable :gcc, :select_if => { |e| File.ftype(e) != 'link' }
+    #   executable :gcc, :select_if => { |e| e.start_with?('/Developer') }
+    #
+    # Both symbols and strings are allowed for names.
+    #
+    #   executable 'aclocal-1.10'
+    #
     def executable(executable, options={})
       options[:switch_stdout_and_stderr] ||= false
       options[:use_queue]                ||= false
@@ -85,12 +116,13 @@ module Executioner
       class_eval "def #{executable.gsub(/-/, '_')}(args, options = {}); #{body}; end", __FILE__, __LINE__
     end
     
+    # Finds the first occurence of the specified executable in Executioner::SEARCH_PATHS
     def find_executable(executable, advance_from = nil)
       search_paths = Executioner::SEARCH_PATHS
       search_paths = search_paths[(search_paths.index(advance_from) + 1)..-1] if advance_from
       
-      if executable_in_path = search_paths.find { |path| File.exist? File.join(path, executable) }
-        File.join executable_in_path, executable
+      if executable_in_path = search_paths.find { |path| File.exist?(File.join(path, executable)) }
+        File.join(executable_in_path, executable)
       end
     end
     module_function :find_executable

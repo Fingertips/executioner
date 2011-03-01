@@ -1,0 +1,72 @@
+= Executioner
+
+Executioner is a  module you can include in your classes to run binaries from
+your Ruby code.
+
+  class Recording
+    include Executioner
+    executable :lame, :switch_stdout_and_stderr => true
+    
+    def transcode
+      lame("--abr 128 -m s #{filename} #{filename_as_mp3}")
+    end
+  end
+
+==== Specifying a binary
+
+By default Executioner looks in Executioner::SEARCH_PATHS for the binary.
+
+  executable :sh
+
+If the binary is installed in a specific location you might want to
+specify the entire path to the executable.
+
+  executable :import, :path => App.root_path + 'scripts/import'
+
+And when you need to specify environment variables for the executable you
+can do so as well.
+
+  executable :migrate, :env => { 'ENV' => 'PRODUCTION' }
+
+If you need more elaborate rules to pick a specific path for a binary you
+can specify a block that selects the right one.
+
+  executable :gcc, :select_if => lambda { |path|
+    File.ftype(path) != 'link' and !path.start_with?('/opt')
+  }
+
+==== Reading output
+
+Executioner reads either +stdout+ or +stderr+ and returns it from the call to
+the binary. In the example presented above a call to +lame+ would return the
+entire output to +stderr+ produced by Lame.
+
+  lame("--work") # => "lame: unrecognized option --work"
+
+==== Exceptions
+
+A call to a binary raises a +ProcessError+ when the output stream is empty and
+there is stuff in the error stream. An +ExecutableNotFoundError+ is raised when
+the executable can't be found in the path.
+
+==== Queues
+
+Executioner uses popen3 to run a subprocess with the executable. Starting a
+process takes some time so if you're running lots of short commands you can
+probably win some time by executing them from a queue.
+
+  executable :ppane, :use_queue => true
+
+Now calling +ls+ will queue the command instead of executing it. You can execute
+the entire queue by calling +execute_queued+.
+
+  ppane('add ~/Code/project')
+  ppane('register')
+  execute_queued
+
+==== Logging
+
+If you want to log everything Executioner does, you can assign a logger instance
+to Executioner.logger.
+
+  Executioner.logger = Rails.logger
