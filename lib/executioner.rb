@@ -36,6 +36,7 @@ module Executioner
         end
         raise ProcessError, "Command: \"#{command}\"\nOutput: \"#{error_message.chomp}\""
       end
+      Executioner.logger.debug(output) if Executioner.logger
     end
     output
   end

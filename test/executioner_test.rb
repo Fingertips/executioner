@@ -46,19 +46,21 @@ describe "Executioner, when executing" do
     @object.execute('/the/command', :env => { :foo => :bar })
   end
   
-  it "should log the command that's going to be executed if a logger is available" do
+  it "should log the command that's going to be executed and the output if a logger is available" do
     begin
       logger = mock('Logger')
       Executioner.logger = logger
       
       logger.expects(:debug).with("Executing: `foo'")
-      stub_popen3
+      output = "This command does not have supercoew powers."
+      logger.expects(:debug).with(output)
+      stub_popen3(output)
       @object.execute('foo')
     ensure
       Executioner.logger = nil
     end
   end
-  
+
   private
   
   def stub_popen3(stdout = '', stderr = '')
