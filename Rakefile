@@ -24,6 +24,7 @@ begin
     s.email    = "eloy@fngtps.com"
     s.homepage = "http://fingertips.github.com"
     s.authors  = ["Eloy Duran"]
+    s.add_runtime_dependency 'open4', '~> 1.1.0'
   end
 rescue LoadError
 end
