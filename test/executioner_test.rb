@@ -7,6 +7,7 @@ class AClassThatUsesSubshells
   executable 'executable-with-dash'
   executable :with_path, :path => '/path/to/executable'
   executable :with_env,  :path => '/path/to/executable', :env => { :foo => 'bar' }
+  #executable :ls, :fail_on_stderr_output => false
   
   public :execute
 end
@@ -17,32 +18,48 @@ describe "Executioner, when executing" do
   end
   
   it "should open a pipe with the given command" do
-    Open3.expects(:popen3).with('/the/command')
+    Open4.expects(:popen4).with('/the/command')
     @object.execute('/the/command')
   end
   
   it "should return the output received from stdout" do
-    stub_popen3 'stdout output', ''
+    stub_popen4 'stdout output', ''
     @object.execute('/the/command').should == 'stdout output'
   end
   
   it "should return the output received from stderr if they should be reversed" do
-    stub_popen3 '', 'stderr output'
+    stub_popen4 '', 'stderr output'
     @object.execute('/the/command', :switch_stdout_and_stderr => true).should == 'stderr output'
   end
   
   it "should raise a Executioner::ProcessError if stdout is empty and stderr is not" do
-    stub_popen3 '', 'stderr output'
-    lambda { @object.execute('foo') }.should.raise Executioner::ProcessError
+    stub_popen4 '', 'stderr output'
+    lambda {
+      @object.execute('foo')
+    }.should.raise Executioner::ProcessError
   end
   
   it "should raise a Executioner::ProcessError if stderr is empty and stdout is not and the streams are reversed" do
-    stub_popen3 'stdout output', ''
-    lambda { @object.execute('foo', :switch_stdout_and_stderr => true) }.should.raise Executioner::ProcessError
+    stub_popen4 'stdout output', ''
+    lambda {
+      @object.execute('foo', :switch_stdout_and_stderr => true)
+    }.should.raise Executioner::ProcessError
+  end
+
+  it "should not raise a Executioner::ProcessError if not failing on stderr output and exit status is zerop" do
+    lambda {
+      @object.execute('ls 1>&2', :fail_on_stderr_output => false)
+    }.should.not.raise Executioner::ProcessError
+  end
+
+  it "should raise a Executioner::ProcessError if not failing on stderr output and exit status is non-zero" do
+    lambda {
+      @object.execute('/usr/bin/false', :fail_on_stderr_output => false)
+    }.should.raise Executioner::ProcessError
   end
   
   it "should prepend the given env variables" do
-    Open3.expects(:popen3).with("foo='bar' /the/command")
+    Open4.expects(:popen4).with("foo='bar' /the/command")
     @object.execute('/the/command', :env => { :foo => :bar })
   end
   
@@ -54,7 +71,7 @@ describe "Executioner, when executing" do
       logger.expects(:debug).with("Executing: `foo'")
       output = "This command does not have supercoew powers."
       logger.expects(:debug).with(output)
-      stub_popen3(output)
+      stub_popen4(output)
       @object.execute('foo')
     ensure
       Executioner.logger = nil
@@ -63,8 +80,10 @@ describe "Executioner, when executing" do
 
   private
   
-  def stub_popen3(stdout = '', stderr = '')
-    Open3.stubs(:popen3).yields(*['stdin', stdout, stderr].map { |s| StringIO.new(s) })
+  def stub_popen4(stdout = '', stderr = '')
+    status = Object.new
+    def status.success?; true; end
+    Open4.stubs(:popen4).yields(*['pid', 'stdin', stdout, stderr].map { |s| StringIO.new(s) }).returns(status)
   end
 end
 

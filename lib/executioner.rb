@@ -1,4 +1,4 @@
-require 'open3'
+require 'open4'
 
 module Executioner
   class ExecutionerError < StandardError; end
@@ -22,15 +22,17 @@ module Executioner
   
   def execute(command, options={})
     command = "#{options[:env].map { |k,v| "#{k}='#{v}'" }.join(' ')} #{command}" if options[:env]
-    
     Executioner.logger.debug("Executing: `#{command}'") if Executioner.logger
-    
+
+    fail_on_stderr_output = options[:fail_on_stderr_output]
+    fail_on_stderr_output = true if fail_on_stderr_output.nil?
+
     output = nil
-    Open3.popen3(command) do |stdin, stdout, stderr|
+    status = Open4.popen4(command) do |_, __, stdout, stderr|
       stdout, stderr = stderr, stdout if options[:switch_stdout_and_stderr]
       
       output = stdout.gets(nil)
-      if output.nil? && (error_message = stderr.gets(nil))
+      if fail_on_stderr_output && output.nil? && (error_message = stderr.gets(nil))
         if error_message =~ /:in\s`exec':\s(.+)\s\(.+\)$/
           error_message = $1
         end
@@ -38,6 +40,11 @@ module Executioner
       end
       Executioner.logger.debug(output) if Executioner.logger
     end
+
+    unless fail_on_stderr_output || status.success?
+      raise ProcessError, "Command: \"#{command}\"\nOutput: \"#{output.chomp if output}\""
+    end
+
     output
   end
   module_function :execute
